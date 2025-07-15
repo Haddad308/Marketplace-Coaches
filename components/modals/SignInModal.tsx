@@ -93,22 +93,23 @@ export function SignInModal() {
 	const handleEmailContinue = async () => {
 		setIsLoading(true);
 		try {
-			const response = await fetch('/api/check-emails', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify({ email: formData.email }),
-			});
-
-			const data = await response.json();
-			const exists = data.exists;
-			setStep(exists ? 'signin' : 'signup');
+			// Try to create a user with a temporary password to check if email exists
+			await signUp(formData.email, 'temp_password_for_check');
+			// If successful, email doesn't exist, proceed to signup
+			setStep('signup');
 			setTouched(null);
 			setError((prev) => ({ ...prev, response: '' }));
 		} catch (err: unknown) {
-			const message = err instanceof Error ? err.message : 'Something went wrong.';
-			setError({ response: message });
+			if (err instanceof Error && err.message.includes('email-already-in-use')) {
+				// Email exists, proceed to signin
+				setStep('signin');
+				setTouched(null);
+				setError((prev) => ({ ...prev, response: '' }));
+			} else {
+				// Other error occurred
+				const message = err instanceof Error ? err.message : 'Something went wrong.';
+				setError({ response: message });
+			}
 		} finally {
 			setIsLoading(false);
 		}
